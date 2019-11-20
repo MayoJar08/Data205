@@ -1,0 +1,279 @@
+---
+title: "Data Ingestion and Wrangling"
+author: "Miguel Mayo"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Data Sets and Sources
+
+##Data Montgomery:
+DEP Reported Sanitary Sewer Overflows
+https://data.montgomerycountymd.gov/Environment/DEP-Reported-Sanitary-Sewer-Overflows/pah9-6f8f
+
+Water Quality Stream Map
+https://data.montgomerycountymd.gov/Environment/Water-Quality-Stream-Map/f9ya-b3gf
+
+Illegal Dumping Activity
+https://data.montgomerycountymd.gov/Environment/Illegal-Dumping-Activity/d985-d2ak
+
+Rainscapes Rewards Projects
+https://data.montgomerycountymd.gov/Environment/Rainscapes-Rewards-Projects/gtrx-qk3r
+
+##Chesapeake Bay Program Datahub:
+Montgomery County Water Quality 1984-present http://data.chesapeakebay.net/api.CSV/WaterQuality/WaterQuality/1-16-1984/10-9-2019/2,4,6/12,13,14,15,2,3,11,7,23,24,16/FIPS/19/5,12,15,21,23,26,27,30,31,34,35,36,40,41,44,51,52,60,61,63,64,65,66,67,68,70,71,73,74,77,78,79,82,83,84,87,88,89,93,94,100,102,103,104,105,108,109,110,111,114,116,119,123,124
+
+
+
+#Libraries used 
+
+    library(dplyr)
+    library(tidyr)
+    library(ggplot2)
+    
+    
+    
+
+```{r, include=FALSE}
+#Libraries used
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+```
+
+
+##Import CSV files
+
+DEP Sanitary Sewer Overflows=SSO
+
+Illegal Dumping Activity=IDA
+
+CBP Water Quality=CBP
+
+RainScape Rewards=RR
+
+DM Watershed Quality=WQ 
+
+(Due to issues with the API links, the last two datasets were not read in live)
+
+```{r,echo=FALSE}
+SSO<-read.csv('https://data.montgomerycountymd.gov/resource/pah9-6f8f.csv')
+IDA<-read.csv('https://data.montgomerycountymd.gov/resource/d985-d2ak.csv')
+CBP<-read.csv('http://data.chesapeakebay.net/api.CSV/WaterQuality/WaterQuality/1-16-1984/10-9-2019/2,4,6/12,13,14,15,2,3,11,7,23,24,16/FIPS/19/5,12,15,21,23,26,27,30,31,34,35,36,40,41,44,51,52,60,61,63,64,65,66,67,68,70,71,73,74,77,78,79,82,83,84,87,88,89,93,94,100,102,103,104,105,108,109,110,111,114,116,119,123,124')
+RR<-read.csv("C:/Users/mayom/Downloads/Rainscapes_Rewards_Projects.csv")
+WQ<-read.csv("C:/Users/mayom/Downloads/Water_Quality_Stream_Map.csv")
+
+```
+#Preliminary Analysis 
+
+##SSO
+
+
+###1) Dimesions 
+
+```{r,echo=FALSE}
+dim(SSO)
+```
+
+###2) NA's
+
+```{r,echo=FALSE}
+sum(is.na(SSO))
+```
+
+
+###3) Five Number Summary
+
+```{r,echo=FALSE}
+summary(SSO)
+```
+
+###Notes
+
+-Under 1000 cases since 2007 
+
+-small number of variables
+
+-Case numbering system seems to switch at some point to start with year
+
+-Max for opendate is 2007 but the max for caseyear is 2019
+
+-casedesc appers to be the crucial data but will be hard to seperate
+
+-Seems to be no format or pattern for reporting casedesc other than certain jargan
+
+-There is only one type for both casetype and casesubtype, suggesting no function within the singular dataset
+
+
+##IDA
+
+###1) Dimensions
+
+```{r,echo=FALSE}
+dim(IDA)
+```
+
+###2) NA's
+
+```{r,echo=FALSE}
+sum(is.na(IDA))
+```
+
+###3)Summary
+
+```{r,echo=FALSE}
+summary(IDA)
+```
+
+###Notes
+
+-Follows similar format to SSO data but with more vairables
+
+-Open and close dates are all listed as midnight, will split date from time and drop time
+
+-geo data is split into 4 variables, considering creating 5th called "adress"
+
+-dataset goes back only to 2016 which is significantly shorter than other sets, but has a large number of cases
+
+-also displays inconsistencies with caseopen minimum value and and caseyear minimum value
+
+-why only 5 clean ups
+
+-casedesc is far more diverse in this set
+
+-1000s of types for some of the categorical variables
+
+-will need to examine exterior sources or possibly contact data owner to decipher the "computed region" columns
+
+
+##CBA
+
+###1) Dimensions
+
+```{r,echo=FALSE}
+dim(CBP)
+```
+
+
+###2) NA's
+
+```{r,echo=FALSE}
+sum(is.na(CBP))
+```
+
+
+###3) Summary
+
+```{r,echo=FALSE}
+summary(CBP)
+```
+
+###Notes
+
+-CSV file was constructed in long instead of wide format by parameter, consider converting or just creating seperate spliced tables
+
+-a lot of NA's, will have to examine further to see how to handle
+
+-does sum of NA's from sum(is.na(CBA)) correspond to the number of NA's in summary
+
+-TotalDepth was recorded 82 times as zero, and left NA for the other 64,008 cases, consider dropping with a note about surface testing
+
+-UpperPycnocline, LowerPycnocline, PrecisionPC, and BiasPC were never recorded for any of the cases
+
+-Problem, Details, and Qualifier only have a few recorded cases, consider filling with "None"
+
+-Measurevalue will be heavily skewed and unreliable due to the different ranges for the different parameters
+
+-Measurevalue- has a minimum of -5, will have to locate the specific case as no paramter should be able to measure negative
+
+-EventId has a minimum of 16 and a max of 455137 which does not match its dimensions
+
+-Consider using EventId to anchor a conversion to long format
+
+
+##RR
+
+###1)Dimensions
+
+```{r, echo=FALSE}
+dim(RR)
+```
+
+###2)NA's
+
+```{r,echo=FALSE}
+sum(is.na(RR))
+```
+
+###3)Summary
+
+```{r,echo=FALSE}
+summary(RR)
+```
+
+###Notes
+
+-High number of NA's, will need to distinguish cases where no data was collected versus cases where tree variables did not apply
+
+-41 cases with a blank in tree variables
+
+-166 different species and 93 different types of rainscapes recorded,seems high so will have to check if any are typos 
+
+-tree height appears to be rounded to the nearest foot
+
+-data seems split between contracticting and self instalation 
+
+-majority of cases are single family homes
+
+-The 8 and 12 digit codes are from different systems used to divide MD's watersheds by drainage, with 8 being larger and between 2nd order rivers/streams and the 12 being smaller and between 3rd order rivers/streams
+
+-will have to check which scale the other datasets use
+
+-no clear indication on difference between OBJECTID and App_ID, but the later has several NA's 
+
+-FY(Finish Year) has several NA's, is it due to project still ongoing or due to never completed/cancled. Also several 2020 dates.
+
+##WQ
+
+###1)Dimensions
+
+```{r, echo=FALSE}
+dim(WQ)
+```
+
+###2)NA's
+
+```{r,echo=FALSE}
+sum(is.na(WQ))
+```
+
+###3)Summary
+
+```{r,echo=FALSE}
+summary(WQ)
+```
+
+##Notes
+
+-Data has not been updated since 2016 and only stretches to 2015
+
+-shape appears to be longitude and latitude
+
+-Object ID must have been human error, both columns match per all cases. safe to remove one column.
+
+-17 streams have no data
+
+-no metric provided for shape length and area
+
+-will switch Benthic_Na to Benthic_Narra to avoid confusion
+
+-Only blank factors are in the narrative columns, but there are more than 17, may have to remove 
+
+-unsure what parameter "average" is averaging 
+
+
+###Changes
+Changes based on these notes were made in Exploratory and have been documented there.
